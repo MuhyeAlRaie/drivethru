@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ea580c">
+  <meta name="description" content="درايف ثرو — اطلب من سيارتك واستلم عند الشباك">
+  <title>درايف ثرو 🚗 | اطلب من سيارتك</title>
+
+  <!-- أيقونة الموقع (بدون ملفات إضافية = تحميل أسرع) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+
+  <!-- الخط: Cairo — يظهر النص فوراً بخط النظام ثم يتبدل عند جهوز الخط -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- المكتبات والسكربتات (defer = لا تعيق عرض الصفحة) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/menu.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+
+  <!-- ===== الترويسة ===== -->
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="brand">🚗 درايف ثرو</div>
+      <p class="tagline">اطلب من سيارتك… واستلم عند الشباك</p>
+      <div id="locationChip" class="loc-chip">📍 جارٍ التحقق من موقعك…</div>
+    </div>
+  </header>
+
+  <main class="container overlap">
+
+    <!-- (1) جارٍ تحديد الموقع -->
+    <section id="locating" class="state-box">
+      <div class="spinner"></div>
+      <h2>جارٍ تحديد موقعك…</h2>
+      <p class="hint">اسمح للمتصفح بالوصول إلى موقعك للتحقق من أنك في مسار السيارات.</p>
+    </section>
+
+    <!-- (2) خارج النطاق — بلوك كامل يمنع رؤية المنيو -->
+    <section id="blocked" class="state-box danger hidden">
+      <div class="state-emoji">🚫</div>
+      <h2>عذراً، يجب أن تكون في مسار السيارات للطلب</h2>
+      <p id="blockedDist" class="dist"></p>
+      <p class="hint">تأكد من تشغيل الـ GPS وانتظر ثوانٍ حتى تثبت الإشارة، ثم أعد المحاولة.</p>
+      <button id="retryLoc" class="btn primary">🔄 إعادة المحاولة</button>
+    </section>
+
+    <!-- (3) خطأ تحديد الموقع / رفض الإذن -->
+    <section id="gpsError" class="state-box warning hidden">
+      <div class="state-emoji">📡</div>
+      <h2>تعذر تحديد موقعك</h2>
+      <p id="gpsErrorMsg" class="hint"></p>
+      <button id="retryLoc2" class="btn primary">🔄 إعادة المحاولة</button>
+    </section>
+
+    <!-- (4) التطبيق غير مُعدّ بعد -->
+    <section id="configError" class="state-box warning hidden">
+      <div class="state-emoji">⚙️</div>
+      <h2>التطبيق بحاجة إلى إعداد</h2>
+      <p class="hint">أدخل مفاتيح Supabase في <b>js/config.js</b> (للتشغيل المحلي) أو أضفها في <b>GitHub Secrets</b> (للنشر) — الشرح كامل في README.md</p>
+      <p id="configErrorMsg" class="hint small"></p>
+    </section>
+
+    <!-- (5) المطعم مغلق — لم يُفتح يوم العمل بعد -->
+    <section id="closedDay" class="state-box danger hidden">
+      <div class="state-emoji">🛑</div>
+      <h2>المطعم مغلق حالياً</h2>
+      <p class="hint">لم يبدأ يوم العمل بعد — انتظر حتى يقوم الموظف بفتح اليوم من لوحة الكاشير ثم أعد المحاولة.</p>
+      <button id="retryDay" class="btn primary">🔄 إعادة المحاولة</button>
+    </section>
+
+    <!-- ===== المنيو ===== -->
+    <section id="menuSection" class="hidden">
+      <nav id="catBar" class="cat-bar" aria-label="أقسام المنيو"></nav>
+      <div id="menuGrid" class="menu-grid"></div>
+    </section>
+  </main>
+
+  <!-- ===== شريط السلة العائم ===== -->
+  <div id="cartBar" class="cart-bar hidden">
+    <button id="openCart" class="cart-open">
+      <span>🛒 السلة (<span id="cartCount">0</span>)</span>
+      <span id="cartTotalMini">0.000 د.أ</span>
+    </button>
+  </div>
+
+  <!-- ===== نافذة السلة ===== -->
+  <div id="cartModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="سلة الطلب">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>🛒 طلبك</h3>
+        <button id="closeCart" class="icon-btn" aria-label="إغلاق">✕</button>
+      </div>
+      <div id="cartItems" class="cart-items"></div>
+      <div class="cart-total-row">
+        <span>المجموع</span>
+        <b id="cartTotal">0.000 د.أ</b>
+      </div>
+      <button id="submitOrder" class="btn primary big">🚗 إرسال إلى الشباك</button>
+      <p class="hint small center">الدفع عند الشباك — نقداً أو بالبطاقة</p>
+    </div>
+  </div>
+
+  <!-- ===== نافذة تأكيد الطلب ===== -->
+  <div id="successModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="تأكيد الطلب">
+    <div class="modal-card success">
+      <div class="state-emoji">✅</div>
+      <h3>تم استلام طلبك بنجاح!</h3>
+      <div class="invoice-box">
+        <span>رقم فاتورتك</span>
+        <b id="successInvoice">#DRV-0000</b>
+      </div>
+      <div class="cart-total-row">
+        <span>المجموع</span>
+        <b id="successTotal">0.000 د.أ</b>
+      </div>
+      <p class="pay-note">💡 أبرز الرقم للموظف عند الشباك للدفع والاستلام</p>
+      <button id="newOrder" class="btn primary big">🔄 طلب جديد</button>
+    </div>
+  </div>
+
+  <footer class="footer">📍 الزرقاء — البتراوي · درايف ثرو</footer>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>

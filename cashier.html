@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1c1917">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="لوحة تحكم الكاشير — درايف ثرو">
+  <title>لوحة الكاشير 🧾 | درايف ثرو</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/common.js"></script>
+  <script defer src="js/cashier.js"></script>
+</head>
+<body class="cashier-page">
+
+  <!-- ===== الشريط العلوي ===== -->
+  <header class="topbar">
+    <div class="topbar-title">🧾 درايف ثرو — لوحة الكاشير</div>
+    <div class="topbar-actions">
+      <span id="liveDot" class="live-dot off"><i></i><span id="liveText">غير متصل</span></span>
+      <button id="refreshBtn" class="icon-btn light" title="تحديث يدوي" aria-label="تحديث يدوي">🔄</button>
+      <button id="soundBtn" class="icon-btn light" title="تفعيل صوت التنبيه" aria-label="تفعيل صوت التنبيه">🔔</button>
+    </div>
+  </header>
+
+  <!-- شريط انقطاع الاتصال -->
+  <div id="connBanner" class="banner hidden">
+    ⚠️ انقطع الاتصال المباشر — جارٍ إعادة المحاولة تلقائياً… تأكد من الإنترنت أو اضغط 🔄
+  </div>
+
+  <main class="container wide">
+
+    <!-- ===== فتح / إغلاق يوم العمل ===== -->
+    <section class="day-bar">
+      <span id="dayChip" class="day-chip closed">🔴 يوم العمل مغلق</span>
+      <button id="dayBtn" class="btn small primary">▶ فتح يوم العمل</button>
+    </section>
+
+    <!-- ===== إحصائيات اليوم ===== -->
+    <section class="stats">
+      <div class="stat-card amber"><b id="statPending">0</b><span>قيد الانتظار</span></div>
+      <div class="stat-card blue"><b id="statPreparing">0</b><span>جاري التجهيز</span></div>
+      <div class="stat-card green"><b id="statDone">0</b><span>مكتمل اليوم</span></div>
+      <div class="stat-card dark"><b id="statTotal">0</b><span>إجمالي طلبات اليوم</span></div>
+      <div class="stat-card gold"><b id="statRevenue">0.000</b><span>مبيعات اليوم (د.أ)</span></div>
+    </section>
+
+    <!-- ===== تصفية الطلبات ===== -->
+    <nav id="filterBar" class="filter-bar" aria-label="تصفية الطلبات"></nav>
+
+    <!-- ===== شبكة الطلبات ===== -->
+    <div id="ordersGrid" class="orders-grid"></div>
+
+    <div id="emptyState" class="state-box hidden">
+      <div class="state-emoji">📭</div>
+      <h2>لا توجد طلبات بعد</h2>
+      <p class="hint">ستظهر الطلبات الجديدة هنا فوراً عند وصولها من صفحة العميل — بدون تحديث الصفحة.</p>
+    </div>
+  </main>
+
+  <!-- ===== نافذة ملخص إغلاق اليوم ===== -->
+  <div id="closeDayModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="ملخص إغلاق اليوم">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>⏹ إغلاق يوم العمل</h3>
+        <button id="cancelClose" class="icon-btn" aria-label="إلغاء">✕</button>
+      </div>
+      <p class="hint" style="margin-bottom:10px">ملخص جميع فواتير اليوم قبل الاعتماد:</p>
+      <div class="sum-row"><span>بدأ يوم العمل</span><b id="sumOpened">—</b></div>
+      <div class="sum-row"><span>عدد الطلبات</span><b id="sumOrders">0</b></div>
+      <div class="sum-row"><span>مكتمل</span><b id="sumCompleted">0</b></div>
+      <div class="sum-row"><span>لم يُسلّم بعد</span><b id="sumNotCompleted">0</b></div>
+      <div class="sum-row total"><span>إجمالي المبيعات</span><b id="sumRevenue">0.000 د.أ</b></div>
+      <p class="sum-note">⚠️ تأكد من مطابقة المبلغ مع الدرج النقدي قبل الاعتماد.</p>
+      <button id="confirmClose" class="btn primary big">✅ اعتماد وإغلاق اليوم</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>

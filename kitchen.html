@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#131316">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="شاشة المطبخ — درايف ثرو">
+  <title>شاشة المطبخ 👨‍🍳 | درايف ثرو</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👨‍🍳</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/common.js"></script>
+  <script defer src="js/kitchen.js"></script>
+</head>
+<body class="kitchen-page">
+
+  <!-- ===== الشريط العلوي: الساعة + الحالة ===== -->
+  <header class="kitchen-topbar">
+    <div class="topbar-title">👨‍🍳 شاشة المطبخ</div>
+    <div class="topbar-actions">
+      <span id="kclock" class="kclock">00:00:00</span>
+      <span id="liveDot" class="live-dot off"><i></i><span id="liveText">غير متصل</span></span>
+      <button id="refreshBtn" class="icon-btn light" title="تحديث يدوي" aria-label="تحديث يدوي">🔄</button>
+      <button id="soundBtn" class="icon-btn light" title="تفعيل صوت التنبيه" aria-label="تفعيل صوت التنبيه">🔔</button>
+    </div>
+  </header>
+
+  <div id="connBanner" class="banner hidden">
+    ⚠️ انقطع الاتصال المباشر — جارٍ إعادة المحاولة تلقائياً… تأكد من الإنترنت أو اضغط 🔄
+  </div>
+
+  <main class="container wide kds">
+
+    <div id="errorWrap"></div>
+
+    <!-- عمودا المطبخ: قيد الانتظار / قيد التجهيز -->
+    <section class="kds-columns">
+      <div class="kds-col">
+        <header class="kds-col-head">
+          <span>⏳ قيد الانتظار</span>
+          <span id="pendingCount" class="kds-count">0</span>
+        </header>
+        <div id="pendingList" class="kds-list"></div>
+        <div id="pendingEmpty" class="kds-empty hidden">لا طلبات جديدة — استريح قليلاً ☕</div>
+      </div>
+
+      <div class="kds-col prep">
+        <header class="kds-col-head">
+          <span>🔥 قيد التجهيز</span>
+          <span id="preparingCount" class="kds-count">0</span>
+        </header>
+        <div id="preparingList" class="kds-list"></div>
+        <div id="preparingEmpty" class="kds-empty hidden">لا طلبات قيد التجهيز</div>
+      </div>
+    </section>
+
+    <p class="kds-hint">⏱ الطلبات مرتبة الأقدم أولاً — تظهر الجديدة فوراً مع نغمة تنبيه</p>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>

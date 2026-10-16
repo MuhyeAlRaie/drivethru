@@ -1,0 +1,60 @@
+name: Deploy Drive-Thru
+
+# ============================================================
+# النشر التلقائي على GitHub Pages مع إخفاء المفاتيح
+# ------------------------------------------------------------
+# المفاتيح لا تُكتب في أي ملف داخل المستودع — يتم حقنها في
+# js/config.js وقت البناء فقط من Repository Secrets:
+#   SUPABASE_URL      = https://xxxx.supabase.co
+#   SUPABASE_ANON_KEY = eyJhbGciOi...
+# ============================================================
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate config.js from repository secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Missing repository secrets. Add SUPABASE_URL and SUPABASE_ANON_KEY in Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+          sed -e "s|__SUPABASE_URL__|${SUPABASE_URL}|g" \
+              -e "s|__SUPABASE_ANON_KEY__|${SUPABASE_ANON_KEY}|g" \
+              js/config.template.js > js/config.js
+          echo "config.js generated successfully (keys are not printed to the log)"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
