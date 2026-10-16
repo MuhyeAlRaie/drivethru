@@ -136,7 +136,7 @@ async function openDay() {
     renderRevenue();
   } catch (err) {
     console.error('فشل فتح اليوم:', err);
-    KB.showToast('⚠️ تعذر فتح يوم العمل — تحقق من تنفيذ sql/setup.sql');
+    KB.showToast('⚠️ ' + (KB.dbErrorHint(err) || 'تعذر فتح يوم العمل — تحقق من تنفيذ sql/setup.sql'));
   } finally {
     UI.dayBtn.disabled = false;
   }
@@ -228,7 +228,7 @@ async function loadOrders() {
 
   if (error) {
     console.error('فشل جلب الطلبات:', error);
-    renderGridError('تعذر جلب الطلبات: ' + (error.message || 'خطأ غير معروف'));
+    renderGridError(KB.dbErrorHint(error) || 'تعذر جلب الطلبات: ' + (error.message || 'خطأ غير معروف'));
     setLive(false);
     return;
   }

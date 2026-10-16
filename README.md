@@ -30,7 +30,8 @@ drive-thru/
 │   ├── cashier.js             ← منطق لوحة الكاشير + يوم العمل
 │   └── kitchen.js             ← منطق شاشة المطبخ
 ├── sql/
-│   └── setup.sql              ← إنشاء جدولي orders و work_days + تفعيل Real-time
+│   ├── setup.sql              ← إنشاء جدولي orders و work_days + الصلاحيات + Real-time
+│   └── fix_permissions.sql    ← 🚑 إصلاح خطأ 401 / permission denied (كود 42501)
 └── .github/workflows/
     └── deploy.yml             ← نشر تلقائي يحقن المفاتيح من Secrets
 ```
@@ -47,10 +48,12 @@ drive-thru/
 ### 2) تنفيذ سكربت قاعدة البيانات
 1. من القائمة الجانبية افتح **SQL Editor** ثم **New query**.
 2. انسخ محتوى الملف `sql/setup.sql` بالكامل والصقه ثم اضغط **Run**.
-3. السكربت آمن لإعادة التنفيذ: ينشئ جدول `orders` وجدول `work_days` (يوم العمل) ويُفعّل **Real-time** على الطلبات ويضبط الصلاحيات.
+3. السكربت آمن لإعادة التنفيذ: ينشئ جدول `orders` وجدول `work_days` (يوم العمل) ويُفعّل **Real-time** على الطلبات ويضبط سياسات الحماية **والصلاحيات (GRANT)**.
    (للتأكد: Database → Replications → يجب أن يظهر `orders` مفعّلاً).
 
 > 🔁 إذا كنت شغّّلت النسخة السابقة سابقاً: أعد تنفيذ `setup.sql` فقط ليُضاف جدول `work_days` الجديد.
+>
+> 🚑 إذا ظهر خطأ **401 / permission denied for table** (كود 42501): نفّذ ملف `sql/fix_permissions.sql` في SQL Editor ثم أعد تحميل الصفحات — التفاصيل في قسم "حل المشكلات الشائعة" أسفله.
 
 ### 3) إضافة المفاتيح إلى Repository Secrets (بدون وضعها في الكود)
 المفاتيح **لا تُكتب في أي ملف داخل المستودع** — بل تُحقن في `js/config.js` آلياً وقت البناء:
@@ -133,8 +136,10 @@ git push -u origin main
 
 | المشكلة | الحل |
 |---|---|
+| خطأ **401 / permission denied for table orders (أو work_days)** — كود 42501، أو رسالة "صلاحيات قاعدة البيانات ناقصة" | سياسات RLS موجودة لكن دور `anon` يفتقر لصلاحيات الجداول (GRANT). الحل: افتح Supabase → **SQL Editor** ونفّذ محتوى `sql/fix_permissions.sql` بالكامل — يجب أن تظهر في النهاية قيم **true** — ثم أعد تحميل الصفحات بـ Ctrl+Shift+R. السكربت آمن ولا يحذف أي بيانات. |
+| ظهرت تحذيرات في Console مثل `MaxListenersExceededWarning` أو `A listener indicated an asynchronous response` مصدرها `contentscript.js` | هذه من إضافات المتصفح (مثل محافظ الكريبتو MetaMask) وليست من التطبيق — تجاهلها أو جرّب وضع التصفح الخفي. |
 | ظهرت رسالة "التطبيق بحاجة إلى إعداد" | محلياً: الصق المفاتيح في `js/config.js`. عند النشر: أضف السرّين في Repository Secrets ثم أعد تشغيل سير العمل من تبويب Actions. |
-| زر "فتح يوم العمل" يفشل | نفّذ `sql/setup.sql` مرة أخرى ليُنشأ جدول `work_days`. |
+| زر "فتح يوم العمل" يفشل | إن كانت الرسالة عن الصلاحيات نفّذ `sql/fix_permissions.sql`، وإلا نفّذ `sql/setup.sql` لإنشاء جدول `work_days`. |
 | العملاء يرون "المطعم مغلق حالياً" | هذا طبيعي قبل فتح اليوم — افتح اليوم من لوحة الكاشير. |
 | الطلبات لا تظهر فوراً في الكاشير/المطبخ | تأكد من تنفيذ `setup.sql` ومن أن Real-time مفعّل (Database → Replications → orders). |
 | لا يعمل تحديد الموقع | GPS يعمل فقط عبر HTTPS أو `localhost` — رابط GitHub Pages آمن تلقائياً. اسمح بإذن الموقع من المتصفح. |

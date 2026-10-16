@@ -73,7 +73,7 @@ async function loadOrders() {
 
   if (error) {
     console.error('فشل جلب الطلبات:', error);
-    renderError('تعذر جلب الطلبات: ' + (error.message || 'خطأ غير معروف'));
+    renderError(KB.dbErrorHint(error) || 'تعذر جلب الطلبات: ' + (error.message || 'خطأ غير معروف'));
     setLive(false);
     return;
   }

@@ -41,6 +41,18 @@ const KB = {
     return new Date(iso).toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
   },
 
+  /* ---------------- تشخيص أخطاء قاعدة البيانات ---------------- */
+
+  /* رسالة خاصة عند نقص صلاحيات الجداول (خطأ 42501 في Supabase):
+     سياسات RLS وحدها لا تكفي — الحل تنفيذ sql/fix_permissions.sql */
+  dbErrorHint(err) {
+    const msg = String((err && (err.message || err.error_description)) || '');
+    if ((err && err.code === '42501') || /permission denied/i.test(msg)) {
+      return 'صلاحيات قاعدة البيانات ناقصة. الحل السريع: افتح لوحة Supabase ثم SQL Editor ونفّذ محتوى ملف sql/fix_permissions.sql، ثم أعد تحميل الصفحة (الشرح في README.md).';
+    }
+    return null;
+  },
+
   /* ---------------- التوست ---------------- */
 
   showToast(msg, ms = 3000) {

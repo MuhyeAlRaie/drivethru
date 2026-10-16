@@ -68,6 +68,15 @@ function showToast(msg, ms = 3200) {
   toastTimer = setTimeout(() => hide(UI.toast), ms);
 }
 
+/** رسالة خاصة عند نقص صلاحيات قاعدة البيانات (خطأ 42501 في Supabase) */
+function dbErrorHint(err) {
+  const msg = String((err && (err.message || err.error_description)) || '');
+  if ((err && err.code === '42501') || /permission denied/i.test(msg)) {
+    return '⚠️ صلاحيات قاعدة البيانات ناقصة — الحل: نفّذ ملف sql/fix_permissions.sql في SQL Editor ثم أعد المحاولة (الشرح في README.md)';
+  }
+  return null;
+}
+
 /* ---------------- الإقلاع ---------------- */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -394,7 +403,7 @@ async function submitOrder() {
 
   } catch (err) {
     console.error('فشل إرسال الطلب:', err);
-    showToast('⚠️ تعذر إرسال الطلب — تحقق من اتصال الإنترنت ثم أعد المحاولة');
+    showToast(dbErrorHint(err) || '⚠️ تعذر إرسال الطلب — تحقق من اتصال الإنترنت ثم أعد المحاولة');
   } finally {
     submitting = false;
     UI.submitBtn.disabled = false;

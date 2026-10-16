@@ -94,3 +94,29 @@ create policy "work_days_delete" on public.work_days
 
 create index if not exists work_days_status_idx
   on public.work_days (status, opened_at desc);
+
+-- ============================================================
+-- 6) منح الصلاحيات على مستوى قاعدة البيانات (GRANT)
+--    ⚠️ مهم جداً: سياسات RLS وحدها لا تكفي — دور anon يحتاج
+--    صلاحيات الجداول نفسها، وبدون هذا القسم سيظهر خطأ:
+--    401 / permission denied for table (كود 42501)
+-- ============================================================
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete
+  on public.orders, public.work_days
+  to anon, authenticated;
+
+grant usage, select on all sequences in schema public
+  to anon, authenticated;
+
+-- ضبط الصلاحيات الافتراضية لأي جداول تُنشأ مستقبلاً (غير حرج إذا فشل)
+do $$
+begin
+  alter default privileges in schema public
+    grant select, insert, update, delete on tables to anon, authenticated;
+  alter default privileges in schema public
+    grant usage, select on sequences to anon, authenticated;
+exception when others then
+  raise notice 'default privileges skipped (not critical): %', sqlerrm;
+end $$;
