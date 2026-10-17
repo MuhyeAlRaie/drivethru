@@ -8,7 +8,7 @@
      Cream              #f4ead7   (text on green / soft fills)
      Black & White      monochrome logo variants
    Fonts: Cairo (Arabic) · Baloo 2 (wordmark) · Oswald (subline)
-   بدون صور أو أيقونات خارجية = تحميل أسرع
+   صور المنيو محلية في assets/images (webp) مع بديل إيموجي تلقائي
    ========================================================= */
 
 /* ---------- المتغيرات والأساسيات ---------- */
@@ -390,12 +390,23 @@ h1, h2, h3 { line-height: 1.4; }
   outline-offset: -2px;
 }
 
-.item-emoji {
+/* صورة الصنف (assets/images/<id>.webp) — والبديل إيموجي عند غياب الملف */
+.item-media {
   flex-shrink: 0;
   width: 64px;
   height: 64px;
   border-radius: 18px;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--tan-soft), #ecd9ba);
+  border: 1px solid rgba(210, 180, 140, .35);
+}
+.item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.item-media.is-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -492,7 +503,28 @@ h1, h2, h3 { line-height: 1.4; }
   border-radius: 14px;
   padding: 10px;
 }
-.cr-emoji { font-size: 1.4rem; }
+/* صورة مصغّرة للصنف داخل السلة */
+.cr-media {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--tan-soft), #ecd9ba);
+  border: 1px solid rgba(210, 180, 140, .35);
+}
+.cr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cr-media.is-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
 .cr-info { flex: 1; min-width: 0; }
 .cr-name { display: block; font-size: .9rem; }
 .cr-price { color: var(--muted); font-size: .75rem; }

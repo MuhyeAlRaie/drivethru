@@ -217,6 +217,30 @@ function gpsFailed(err) {
 
 /* ---------------- المنيو ---------------- */
 
+/**
+ * صورة الصنف: المسار الافتراضي assets/images/<id>.webp
+ * ويمكن تخصيصه بإضافة حقل img في تعريف الصنف داخل js/menu.js.
+ * عند غياب الملف يعود الكرت تلقائياً لعرض الإيموجي (fallback) دون كسر الواجهة.
+ */
+function itemImageSrc(item) {
+  return item.img || `assets/images/${item.id}.webp`;
+}
+
+/** يُدخل صورة الصنف داخل الحاوية مع بديل إيموجي عند فشل تحميل الملف */
+function mountItemMedia(container, item, imgCls) {
+  const img = new Image();
+  img.className = imgCls;
+  img.src = itemImageSrc(item);
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.addEventListener('error', () => {
+    container.textContent = item.emoji || '🍽️';
+    container.classList.add('is-fallback');
+  }, { once: true });
+  container.appendChild(img);
+}
+
 function buildCatBar() {
   const cats = [{ id: 'all', name: 'الكل', icon: '🍽️' }, ...CATEGORIES];
   UI.catBar.innerHTML = '';
@@ -244,7 +268,7 @@ function itemCard(item) {
   card.className = 'item-card';
   card.dataset.id = item.id;
   card.innerHTML = `
-    <div class="item-emoji">${item.emoji}</div>
+    <div class="item-media"></div>
     <div class="item-info">
       <h3 class="item-name"></h3>
       <p class="item-desc"></p>
@@ -257,6 +281,7 @@ function itemCard(item) {
         </div>
       </div>
     </div>`;
+  mountItemMedia(card.querySelector('.item-media'), item, 'item-img');
   card.querySelector('.item-name').textContent = item.name;
   card.querySelector('.item-desc').textContent = item.desc;
   card.querySelector('.plus').addEventListener('click', () => changeQty(item.id, +1));
@@ -329,7 +354,7 @@ function renderCartItems() {
     const row = document.createElement('div');
     row.className = 'cart-row';
     row.innerHTML = `
-      <span class="cr-emoji">${item.emoji}</span>
+      <span class="cr-media"></span>
       <div class="cr-info">
         <b class="cr-name"></b>
         <span class="cr-price">${fmt(item.price)}</span>
@@ -340,6 +365,7 @@ function renderCartItems() {
         <button class="step-btn plus" aria-label="زيادة الكمية">+</button>
       </div>
       <b class="cr-subtotal">${fmt(item.price * qty)}</b>`;
+    mountItemMedia(row.querySelector('.cr-media'), item, 'cr-img');
     row.querySelector('.cr-name').textContent = item.name;
     row.querySelector('.plus').addEventListener('click', () => { changeQty(id, +1); renderCartItems(); });
     row.querySelector('.minus').addEventListener('click', () => { changeQty(id, -1); renderCartItems(); });
