@@ -10,22 +10,26 @@
    ========================================================= */
 
 const CATEGORIES = [
-  { id: 'burgers', name: 'برجر',     icon: '🍔' },
-  { id: 'fries',   name: 'بطاطا',    icon: '�' },
-  { id: 'drinks',  name: 'مشروبات',  icon: '🥤' }
+  { id: 'burgers', name: 'برجر' },
+  { id: 'fries',   name: 'بطاطا' },
+  { id: 'drinks',  name: 'مشروبات'}
 ];
 
 const MENU = [
 
   
   // ---------- برجر ----------
-  { id: 'b1', cat: 'burgers', name: 'برجر لحم أنجوس',
-    desc: 'لحم أنجوس مشوي مشرّب + صوص الدرايف الخاص',
-    price: 2.500, emoji: '🍔' },
+  { id: 'b1', cat: 'burgers', name: 'أونو برجر',
+    desc: 'لحم أنجوس مشوي + صوص  الخاص + جبنة شيدر',
+    price: 3.500, emoji: '🍔' },
 
-  { id: 'b2', cat: 'burgers', name: 'تشيكن برجر',
-    desc: 'صدور دجاج مقرمشة + مايونيز الثوم + خس طازج',
-    price: 2.250, emoji: '🥪' },
+  { id: 'b2', cat: 'burgers', name: 'سموكي برجر',
+    desc: 'لحم أنجوس مشوي + صوص  الخاص + جبنة شيدر',
+    price: 3.250, emoji: '🥪' },
+
+    { id: 'b3', cat: 'burgers', name: 'سماش برجر',
+    desc: 'لحم أنجوس مشوي + صوص  الخاص + جبنة شيدر',
+    price: 2.5, emoji: '🥪' },
 
   // ---------- بطاطا ----------
   { id: 'f1', cat: 'fries', name: 'بطاطا مقلية',
