@@ -29,6 +29,8 @@ const UI = {
   successModal:  $id('successModal'),
   successInvoice:$id('successInvoice'),
   successTotal:  $id('successTotal'),
+  saveInvoice:   $id('saveInvoice'),
+  shareInvoice:  $id('shareInvoice'),
   blockedDist:   $id('blockedDist'),
   gpsErrorMsg:   $id('gpsErrorMsg'),
   toast:         $id('toast')
@@ -39,6 +41,7 @@ let cart = new Map();     // { معرّف الصنف: الكمية }
 let activeCat = 'all';    // القسم المعروض حالياً
 let submitting = false;   // قفل يمنع الإرسال المزدوج
 let dayClosed = false;    // هل يوم العمل مغلق؟
+let lastOrder = null;     // آخر طلب ناجح { invoice, items, total, at } لصورة الفاتورة
 let toastTimer = null;
 
 /* ---------------- أدوات عامة ---------------- */
@@ -424,6 +427,7 @@ async function submitOrder() {
     closeCart();
     UI.successInvoice.textContent = invoice;
     UI.successTotal.textContent = fmt(total);
+    lastOrder = { invoice, items, total, at: new Date() };  // لصورة الفاتورة
     show(UI.successModal);
     document.body.classList.add('no-scroll');
 
@@ -437,6 +441,249 @@ async function submitOrder() {
   }
 }
 
+/* ---------------- صورة الفاتورة (Canvas) ---------------- */
+
+/** مسار مستطيل مستدير الزوايا (بديل متوافق عن ctx.roundRect) */
+function rrPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** خط منقط أفقّي — شبيه بفواصل إيصالات الكاشير */
+function dashedLine(ctx, x1, x2, y, color, width = 2) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash([8, 7]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y);
+  ctx.lineTo(x2, y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** «باركود» زخرفي ثابت مشتق من رقم الفاتورة (لمسة إيصال) */
+function drawBarcode(ctx, cx, y, w, h, seedStr, color) {
+  let seed = 0;
+  for (const ch of String(seedStr)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    return seed / 4294967296;
+  };
+  ctx.save();
+  ctx.fillStyle = color;
+  const n = 46, bw = w / n;
+  let x = cx - w / 2;
+  for (let i = 0; i < n; i++) {
+    const bar = bw * (0.25 + rand() * 0.5);
+    if (rand() > 0.28) ctx.fillRect(x, y, bar, h);
+    x += bw;
+  }
+  ctx.restore();
+}
+
+/** يقصّ النص الطويل مع علامة … لي لا يتجاوز العرض المتاح */
+function fitText(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = String(text);
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxWidth) t = t.slice(0, -1);
+  return t + '…';
+}
+
+/**
+ * يرسم بطاقة فاتورة بهوية UNO BUN ويعيد عنصر Canvas.
+ * كل نص يُرسم كقطعة مستقلة باتجاه واحد (اسم عربي / أرقام / عملة)
+ * لتجنّب اختلاف ترتيب المزج بين المتصفحات، والتموضع يدوي RTL.
+ */
+async function buildInvoiceCanvas(order) {
+  // جهّز الخطوط المستعملة قبل الرسم (يُتجاهل بصمت إن تعذّر)
+  try {
+    await Promise.all([
+      document.fonts.load('800 72px "Baloo 2"'),
+      document.fonts.load('600 21px Oswald'),
+      document.fonts.load('400 22px Cairo'),
+      document.fonts.load('600 24px Cairo'),
+      document.fonts.load('700 23px Cairo'),
+      document.fonts.load('900 28px Cairo')
+    ]);
+  } catch { /* يُرسم بخط النظام البديل */ }
+
+  const GREEN = '#012621', GREEN2 = '#0a352e', TAN = '#d2b48c',
+        TAN_SOFT = '#f4ead7', CREAM = '#faf6ee', INK = '#13221d',
+        MUTED = '#5c6b63', PILL = '#ecd9ba';
+
+  const W = 800, pad = 60;
+  const cardX = pad, cardW = W - pad * 2, cardPad = 28;
+  const rows = Array.isArray(order.items) ? order.items : [];
+
+  const cardTop = 470;
+  const cardH = 96 + rows.length * 46 + 106;
+  const cardBottom = cardTop + cardH;
+  const barY = cardBottom + 48;
+  const invY = barY + 54 + 38;
+  const noteY = invY + 64;
+  const note2Y = noteY + 36;
+  const H = note2Y + 88;
+
+  const c = document.createElement('canvas');
+  c.width = W * 2; c.height = H * 2;      // ×2 لدقة شاشات الجوال العالية
+  const ctx = c.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.textBaseline = 'alphabetic';
+
+  const center = (text, y, font, color) => {
+    ctx.font = font; ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, W / 2, y);
+  };
+  const right = (text, x, y, font, color) => {
+    ctx.font = font; ctx.fillStyle = color;
+    ctx.textAlign = 'right';
+    ctx.fillText(text, x, y);
+  };
+  const left = (text, x, y, font, color) => {
+    ctx.font = font; ctx.fillStyle = color;
+    ctx.textAlign = 'left';
+    ctx.fillText(text, x, y);
+  };
+
+  // (1) خلفية الخضرة الرسمية بتدرج شعاعي مثل ترويسة التطبيق
+  const bg = ctx.createRadialGradient(W / 2, -80, 60, W / 2, -80, 1000);
+  bg.addColorStop(0, GREEN2);
+  bg.addColorStop(1, GREEN);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // (2) الترويسة: الشعار النصي + سطر الفرع
+  center('UNO BUN', 128, '800 76px "Baloo 2", Cairo, sans-serif', TAN);
+  center('B U R G E R S   A N D   F R I E S', 166, '600 21px Oswald, sans-serif', TAN_SOFT);
+  dashedLine(ctx, W / 2 - 150, W / 2 + 150, 192, 'rgba(210,180,140,.55)', 2);
+
+  // (3) صندوق رقم الفاتورة (إطار رملي متقطع مثل الشاشة)
+  const bx = W / 2 - 220, by = 228, bw2 = 440, bh = 150;
+  ctx.save();
+  ctx.strokeStyle = TAN; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+  rrPath(ctx, bx, by, bw2, bh, 20);
+  ctx.stroke();
+  ctx.restore();
+  center('رقم فاتورتك', by + 52, '700 24px Cairo, sans-serif', TAN_SOFT);
+  center(order.invoice, by + 116, '800 60px "Baloo 2", Cairo, sans-serif', '#ffffff');
+
+  // (4) تاريخ ووقت الطلب
+  let when = '';
+  try {
+    when = new Intl.DateTimeFormat('ar-JO', { dateStyle: 'medium', timeStyle: 'short' }).format(order.at || new Date());
+  } catch { when = (order.at || new Date()).toLocaleString(); }
+  center(when, 424, '400 22px Cairo, sans-serif', TAN_SOFT);
+
+  // (5) بطاقة الإيصال الكريمية: تفاصيل الأصناف والمجموع
+  ctx.fillStyle = CREAM;
+  rrPath(ctx, cardX, cardTop, cardW, cardH, 24);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(210,180,140,.5)'; ctx.lineWidth = 2;
+  rrPath(ctx, cardX, cardTop, cardW, cardH, 24);
+  ctx.stroke();
+
+  right('🧾 تفاصيل الطلب', cardX + cardW - cardPad, cardTop + 58, '900 28px Cairo, sans-serif', GREEN);
+
+  const nameRight = cardX + cardW - cardPad - 48;   // مسار اسم الصنف (بعد شارة الكمية)
+  rows.forEach((it, i) => {
+    const y = cardTop + 104 + i * 46;
+    const qty = Number(it.qty) || 1;
+    const lineTotal = Number(it.price) * qty;
+
+    // شارة الكمية (رقم فقط داخل دائرة رملية)
+    const pillCx = cardX + cardW - cardPad - 20;
+    ctx.fillStyle = PILL;
+    ctx.beginPath();
+    ctx.arc(pillCx, y - 8, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '800 18px Cairo, sans-serif';
+    ctx.fillStyle = GREEN; ctx.textAlign = 'center';
+    ctx.fillText(String(qty), pillCx, y - 1);
+
+    // اسم الصنف (عربي فقط) بعرض محدود
+    ctx.font = '700 23px Cairo, sans-serif';
+    right(fitText(ctx, it.name, nameRight - (cardX + 170)), nameRight, y, '700 23px Cairo, sans-serif', INK);
+
+    // السعر (أرقام) + العملة (عربي) في الجهة المقابلة
+    const digits = lineTotal.toFixed(3);
+    left(digits, cardX + cardPad, y, '700 23px Cairo, sans-serif', INK);
+    const dw = ctx.measureText(digits).width;   // ملاحظة: الخط ما زال خط الصنف
+    left('د.أ', cardX + cardPad + dw + 10, y, '600 16px Cairo, sans-serif', MUTED);
+  });
+
+  dashedLine(ctx, cardX + cardPad, cardX + cardW - cardPad, cardTop + cardH - 92, 'rgba(19,34,29,.25)', 2);
+  right('المجموع', cardX + cardW - cardPad, cardTop + cardH - 40, '900 28px Cairo, sans-serif', GREEN);
+  const totalDigits = Number(order.total).toFixed(3);
+  left(totalDigits, cardX + cardPad, cardTop + cardH - 40, '900 30px Cairo, sans-serif', GREEN);
+  left('د.أ', cardX + cardPad + ctx.measureText(totalDigits).width + 10, cardTop + cardH - 40, '700 19px Cairo, sans-serif', GREEN);
+
+  // (6) باركود زخرفي + رقم الفاتورة تحته
+  drawBarcode(ctx, W / 2, barY, 300, 54, order.invoice, 'rgba(244,234,215,.92)');
+  center(order.invoice, invY, '600 24px Oswald, sans-serif', TAN);
+
+  // (7) ملاحظات الاستلام
+  center('💡 أبرز رقم الفاتورة عند الشباك للدفع والاستلام', noteY, '700 23px Cairo, sans-serif', CREAM);
+  center('الدفع عند الشباك — نقداً أو بالبطاقة', note2Y, '400 19px Cairo, sans-serif', TAN_SOFT);
+
+  // (8) ختم العلامة أسفل البطاقة
+  center('UNO BUN · Burgers and Fries', H - 34, '500 18px Oswald, sans-serif', TAN);
+
+  return c;
+}
+
+function invoiceFileName() {
+  return 'UNOBUN-' + String((lastOrder && lastOrder.invoice) || '').replace('#', '') + '.png';
+}
+
+/** حفظ صورة الفاتورة في تنزيلات الجهاز */
+async function saveInvoiceImage() {
+  if (!lastOrder) return;
+  try {
+    const canvas = await buildInvoiceCanvas(lastOrder);
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('canvas.toBlob returned null');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = invoiceFileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showToast('✅ تم حفظ صورة الفاتورة في التنزيلات');
+  } catch (err) {
+    console.error('فشل إنشاء صورة الفاتورة:', err);
+    showToast('⚠️ تعذر إنشاء صورة الفاتورة — أعد المحاولة');
+  }
+}
+
+/** مشاركة صورة الفاتورة عبر واجهة المشاركة في الجوال */
+async function shareInvoiceImage() {
+  if (!lastOrder) return;
+  try {
+    const canvas = await buildInvoiceCanvas(lastOrder);
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('canvas.toBlob returned null');
+    const file = new File([blob], invoiceFileName(), { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'فاتورة طلبك — UNO BUN' });
+      return;   // واجهة المشاركة للنظام تُظهر حالتها بنفسها
+    }
+    await saveInvoiceImage();   // لا دعم للمشاركة (غالباً سطح المكتب) → حفظ
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;   // أغلق المستخدم نافذة المشاركة
+    console.error('فشل مشاركة الفاتورة:', err);
+    showToast('⚠️ تعذر مشاركة الصورة — جرّب زر الحفظ');
+  }
+}
+
 /* ---------------- ربط الأحداث ---------------- */
 
 function bindEvents() {
@@ -446,6 +693,15 @@ function bindEvents() {
     if (e.target === UI.cartModal) closeCart();
   });
   UI.submitBtn.addEventListener('click', submitOrder);
+  UI.saveInvoice.addEventListener('click', saveInvoiceImage);
+  UI.shareInvoice.addEventListener('click', shareInvoiceImage);
+
+  // زر المشاركة يظهر فقط في المتصفحات التي تدعم مشاركة الملفات (غالباً الجوال)
+  try {
+    const probe = new File([new Blob(['x'])], 'p.png', { type: 'image/png' });
+    if (!(navigator.canShare && navigator.canShare({ files: [probe] }))) hide(UI.shareInvoice);
+  } catch { hide(UI.shareInvoice); }
+
   $id('newOrder').addEventListener('click', () => {
     hide(UI.successModal);
     document.body.classList.remove('no-scroll');

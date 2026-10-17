@@ -573,6 +573,15 @@ h1, h2, h3 { line-height: 1.4; }
   margin: 12px 0 16px;
 }
 
+/* أزرار حفظ/مشاركة صورة الفاتورة */
+.invoice-actions {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 10px;
+}
+.invoice-actions .btn { flex: 1; font-size: .9rem; padding: 11px 14px; }
+.invoice-actions .btn.ghost:hover { border-color: var(--tan); color: var(--green); }
+
 .footer {
   text-align: center;
   color: var(--muted);
