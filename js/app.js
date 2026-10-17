@@ -242,12 +242,12 @@ function mountItemMedia(container, item, imgCls) {
 }
 
 function buildCatBar() {
-  const cats = [{ id: 'all', name: 'الكل', icon: '🍽️' }, ...CATEGORIES];
+  const cats = [{ id: 'all', name: 'الكل'}, ...CATEGORIES];
   UI.catBar.innerHTML = '';
   cats.forEach((c) => {
     const btn = document.createElement('button');
     btn.className = 'chip' + (c.id === activeCat ? ' active' : '');
-    btn.textContent = `${c.icon} ${c.name}`;
+    btn.textContent = `${c.name}`;
     btn.addEventListener('click', () => {
       activeCat = c.id;
       buildCatBar();
